@@ -8,7 +8,7 @@ STATUS_CHK_FREQUENCY=""
 
 # ── constants ───────────────────────────────────────────────────────────────
 DEFAULT_ADB_PORT="5555"
-DEFAULT_STATUS_CHK_FREQUENCY="3"
+DEFAULT_STATUS_CHK_FREQUENCY="5"
 ADB_PORT_PATTERN='^([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$'
 STATUS_CHK_FREQUENCY_PATTERN='^([1-9]|10)$'
 
@@ -20,13 +20,9 @@ print_log() {
 
 # Enable TCP ADB + wireless-debugging settings so they survive reboots.
 start_adb() {
-    # Persist TCP port across reboots
     setprop persist.adb.tcp.port "$ADB_PORT"
     setprop service.adb.tcp.port "$ADB_PORT"
-
-    # Keep the "Wireless debugging" Developer-Options toggle ON in settings DB
     settings put global adb_wifi_enabled 1
-
     stop adbd
     start adbd
 }
@@ -41,35 +37,28 @@ stop_adb() {
 
 # Returns 0 if ADB needs (re)starting, 1 if everything is fine.
 check_adb_status() {
-    # adbd must be running
-    [ "$(getprop init.svc.adbd)" = "running" ] || return 0
+    local svc="$(getprop init.svc.adbd)"
+    local tcp="$(getprop service.adb.tcp.port)"
+    local ptcp="$(getprop persist.adb.tcp.port)"
 
-    # Either classic TCP port is set OR TLS wireless-debug server is active
-    local tcp
-    tcp="$(getprop service.adb.tcp.port)"
-    local tls
-    tls="$(getprop persist.adb.tls_server.enable)"
+    [ "$svc" = "running" ] || { print_log "check: adbd not running"; return 0; }
+    [ "$tcp" = "$ADB_PORT" ] && return 1
+    [ "$ptcp" = "$ADB_PORT" ] && return 1
 
-    [ "$tcp" = "$ADB_PORT" ] && return 1   # classic TCP — OK
-    [ "$tls" = "1" ]         && return 1   # TLS wireless debugging — OK
-
-    return 0  # neither active → needs start
+    print_log "check: adbd running but no TCP port"
+    return 0
 }
 
 maintain_adb_availability() {
     while true; do
         if [ -e "${MODDIR}/disable" ]; then
-            check_adb_status
-            if [ $? -eq 1 ]; then
-                print_log "Module disabled — stopping ADB"
-                stop_adb
-            fi
-        else
-            check_adb_status
-            if [ $? -eq 0 ]; then
-                print_log "ADB not ready — starting"
-                start_adb
-            fi
+            sleep $STATUS_CHK_FREQUENCY
+            continue
+        fi
+        check_adb_status
+        if [ $? -eq 0 ]; then
+            print_log "ADB not ready — starting"
+            start_adb
         fi
         sleep $STATUS_CHK_FREQUENCY
     done
@@ -77,20 +66,24 @@ maintain_adb_availability() {
 
 load_config() {
     local cfg="${MODDIR}/config"
-    [ -f "$cfg" ] && . "$cfg" && print_log "Config loaded"
+    [ -f "$cfg" ] && . "$cfg"
 }
 
 parse_config() {
-    echo "$ADB_PORT" | grep -Eq "$ADB_PORT_PATTERN" || {
+    if [ -z "$ADB_PORT" ]; then
+        ADB_PORT=$DEFAULT_ADB_PORT
+    elif ! echo "$ADB_PORT" | grep -Eq "$ADB_PORT_PATTERN"; then
         print_log "ADB_PORT invalid — using default"
         ADB_PORT=$DEFAULT_ADB_PORT
-    }
+    fi
     print_log "ADB_PORT=$ADB_PORT"
 
-    echo "$STATUS_CHK_FREQUENCY" | grep -Eq "$STATUS_CHK_FREQUENCY_PATTERN" || {
+    if [ -z "$STATUS_CHK_FREQUENCY" ]; then
+        STATUS_CHK_FREQUENCY=$DEFAULT_STATUS_CHK_FREQUENCY
+    elif ! echo "$STATUS_CHK_FREQUENCY" | grep -Eq "$STATUS_CHK_FREQUENCY_PATTERN"; then
         print_log "STATUS_CHK_FREQUENCY invalid — using default"
         STATUS_CHK_FREQUENCY=$DEFAULT_STATUS_CHK_FREQUENCY
-    }
+    fi
     print_log "STATUS_CHK_FREQUENCY=$STATUS_CHK_FREQUENCY"
 }
 
@@ -100,17 +93,19 @@ parse_config() {
         sleep 1
     done
 
+    rm -f /data/local/tmp/wifiadb.log
     load_config
+    _ver=$(grep '^version=' "$MODDIR/module.prop" 2>/dev/null | cut -d= -f2)
+    print_log "---- MagiskWiFiADB ${_ver} started ----"
     parse_config
 
-    print_log "---- magisk-wifiadb started ----"
-
-    # Immediately apply settings without waiting for first check cycle
+    # Enable wireless ADB — AdbService will properly init network stack and start adbd
     if [ ! -e "${MODDIR}/disable" ]; then
-        settings put global adb_wifi_enabled 1
         setprop persist.adb.tcp.port "$ADB_PORT"
-        print_log "Boot-time: adb_wifi_enabled=1 persist.adb.tcp.port=$ADB_PORT"
+        settings put global adb_wifi_enabled 1
+        print_log "Boot-time: persist.adb.tcp.port=$ADB_PORT, adb_wifi_enabled=1"
     fi
+    print_log "Entering monitor loop"
 
     maintain_adb_availability
 ) &

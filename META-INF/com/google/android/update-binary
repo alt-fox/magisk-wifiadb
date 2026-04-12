@@ -1,0 +1,33 @@
+#!/sbin/sh
+
+############################################
+# Magisk Module Installer (service-only)
+############################################
+
+SKIPUNZIP=1
+
+# Load Magisk utilities
+[ -f "$NVBASE/util_functions.sh" ] && . "$NVBASE/util_functions.sh" || {
+    echo "ERROR: util_functions.sh not found — update Magisk"
+    exit 1
+}
+
+# Read module metadata
+unzip -o "$ZIPFILE" "module.prop" -d "$TMPDIR" >&2
+. "$TMPDIR/module.prop" 2>/dev/null
+
+# Magisk sets MODPATH = $NVBASE/modules_update/$MODID
+ui_print ""
+ui_print "  *** $name $version ***"
+ui_print ""
+
+# Extract module files
+ui_print "- Extracting files"
+unzip -o "$ZIPFILE" "module.prop" "service.sh" "config" -d "$MODPATH" >&2
+
+# Permissions
+set_perm_recursive "$MODPATH" root root 0755 0644
+set_perm "$MODPATH/service.sh" root root 0755
+
+ui_print "- Done — reboot to activate"
+ui_print ""
