@@ -1,0 +1,6 @@
+id=magisk-wifiadb
+name=MagiskWiFiADB
+version=1.2.0
+versionCode=005
+author=mrh929,Preston
+description=Auto-enables wireless ADB (TCP+TLS) on boot, persists adb_wifi_enabled setting.
