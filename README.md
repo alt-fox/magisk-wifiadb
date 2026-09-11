@@ -15,8 +15,8 @@ Download `magisk-wifiadb-x.x.x.zip` from [Releases](https://github.com/alt-fox/m
 
 Or via CLI:
 ```
-adb push magisk-wifiadb-1.2.1.zip /data/local/tmp/
-adb shell su -c "magisk --install-module /data/local/tmp/magisk-wifiadb-1.2.1.zip"
+adb push magisk-wifiadb-1.2.2.zip /data/local/tmp/
+adb shell su -c "magisk --install-module /data/local/tmp/magisk-wifiadb-1.2.2.zip"
 ```
 Reboot to activate.
 

@@ -1,6 +1,6 @@
 id=magisk-wifiadb
 name=MagiskWiFiADB
-version=1.2.1
-versionCode=006
+version=1.2.2
+versionCode=007
 author=mrh929, alt-fox
 description=Auto-enables wireless ADB (TCP+TLS) on boot, persists adb_wifi_enabled setting.

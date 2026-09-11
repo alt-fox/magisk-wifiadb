@@ -1,6 +1,21 @@
 CHANGELOG — MagiskWiFiADB
 =========================
 
+[1.2.2] - 2026-09-11
+
+  Fixed:
+  - First-boot TCP ADB on a USB boot: adbd starts before the module sets the
+    port and never re-reads it, so `adb connect :5555` was refused. The monitor
+    now checks the real listening socket (/proc/net/tcp), not just whether
+    persist.adb.tcp.port is set, and restarts adbd once to open the socket.
+
+  Added:
+  - uninstall.sh — reverts persist.adb.tcp.port / service.adb.tcp.port /
+    adb_wifi_enabled on removal; without it the persistent port stayed set
+    forever after uninstall (adbd kept listening with the module gone)
+  - Restart adbd at most once per boot (latch) + single-instance lock, so a slow
+    or flapping adbd can no longer cause a restart storm
+
 [1.2.1] - 2026-09-11
 
   Fixed:

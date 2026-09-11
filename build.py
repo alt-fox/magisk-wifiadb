@@ -19,6 +19,7 @@ FILES = [
     ("config", 0o644),
     ("customize.sh", 0o644),
     ("service.sh", 0o755),
+    ("uninstall.sh", 0o755),
     ("META-INF/com/google/android/update-binary", 0o755),
     ("META-INF/com/google/android/updater-script", 0o644),
 ]
