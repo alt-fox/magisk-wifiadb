@@ -15,8 +15,8 @@ Download `magisk-wifiadb-x.x.x.zip` from [Releases](https://github.com/alt-fox/m
 
 Or via CLI:
 ```
-adb push magisk-wifiadb-1.2.0.zip /data/local/tmp/
-adb shell su -c "magisk --install-module /data/local/tmp/magisk-wifiadb-1.2.0.zip"
+adb push magisk-wifiadb-1.2.1.zip /data/local/tmp/
+adb shell su -c "magisk --install-module /data/local/tmp/magisk-wifiadb-1.2.1.zip"
 ```
 Reboot to activate.
 
@@ -50,6 +50,23 @@ adb connect <device-ip>:5555
 - Config file shipped with module
 - `customize.sh` with install info
 - Log auto-cleanup on reboot
+
+## Building
+
+Reproducible and cross-platform — normalizes line endings to LF and sets the
+unix exec bit, so the packaged zip is correct regardless of host OS:
+
+```
+python build.py            # produces magisk-wifiadb-<version>.zip
+python build.py --push     # also push to a connected device via adb
+```
+
+## Releasing
+
+Push a `vX.Y.Z` tag — the GitHub Actions workflow builds via `build.py`,
+independently verifies the zip (no CRLF, exec bit present), and publishes it to
+the release. Do not hand-pack the zip: that reintroduces CRLF and drops the exec
+bit (the v1.2.0 asset bug).
 
 ## Tested on
 

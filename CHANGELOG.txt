@@ -1,6 +1,21 @@
 CHANGELOG — MagiskWiFiADB
 =========================
 
+[1.2.1] - 2026-09-11
+
+  Fixed:
+  - Release packaging: the v1.2.0 zip was hand-packed on Windows, shipping CRLF
+    line endings and no exec bit on service.sh, so Magisk never ran it at boot
+    (adb connect refused, install "succeeded" silently). Rebuilt with LF and the
+    exec bit set.
+
+  Added:
+  - build.py — reproducible, cross-platform module packer: LF normalization,
+    unix modes, Unix-origin zip entries, and self-verification
+  - GitHub Actions release workflow: builds via build.py and independently
+    verifies the artifact (no CRLF, exec bit present) before publishing
+  - .gitattributes (eol=lf) to enforce LF at the git layer
+
 [1.2.0] - 2026-04-12
 
   Added:
