@@ -1,0 +1,49 @@
+name: Release
+
+# Собирает и публикует zip модуля при пуше тега vX.Y.Z.
+# Сборка идёт единственным путём — build.py, который нормализует LF,
+# ставит unix-режимы (exec-бит service.sh) и падает при любой регрессии.
+# Дополнительно артефакт перепроверяется независимо (распаковкой), поэтому
+# битый релиз (CRLF / потерянный exec-бит) опубликоваться не может.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Build and self-verify module zip
+        run: python build.py
+
+      - name: Independently verify packaged zip
+        run: |
+          zip=$(ls magisk-wifiadb-*.zip)
+          mkdir _verify && unzip -q "$zip" -d _verify
+          # 1. Ни одного CR в распакованных файлах.
+          if grep -rlP '\r' _verify/ ; then
+            echo "::error::CRLF found in packaged zip"; exit 1
+          fi
+          # 2. Exec-бит на service.sh в самом архиве (независимо от сборщика).
+          mode=$(zipinfo -l "$zip" service.sh | awk '{print $1}')
+          echo "service.sh entry: $mode"
+          case "$mode" in
+            -rwx*) echo "exec bit OK" ;;
+            *) echo "::error::service.sh missing exec bit in packaged zip"; exit 1 ;;
+          esac
+
+      - name: Publish artifact to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: magisk-wifiadb-*.zip
+          fail_on_unmatched_files: true
