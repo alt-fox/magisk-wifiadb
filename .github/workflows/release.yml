@@ -42,8 +42,23 @@ jobs:
             *) echo "::error::service.sh missing exec bit in packaged zip"; exit 1 ;;
           esac
 
+      - name: Generate release notes from CHANGELOG
+        run: |
+          ver="${GITHUB_REF_NAME#v}"
+          awk -v ver="$ver" '
+            BEGIN { print "## Changes"; print "" }
+            index($0, "[" ver "]") == 1 { grab=1; next }   # начало секции этой версии
+            grab && substr($0,1,1) == "[" { exit }          # следующая версия — стоп
+            !grab { next }
+            /^  [A-Za-z]+:[ ]*$/ { next }                   # свернуть подзаголовки Fixed:/Added:
+            /^  - / { sub(/^  - /, "- "); print; next }
+            /^    +/ { sub(/^  +/, "  "); print; next }     # продолжение пункта
+          ' CHANGELOG.txt > NOTES.md
+          cat NOTES.md
+
       - name: Publish artifact to release
         uses: softprops/action-gh-release@v2
         with:
           files: magisk-wifiadb-*.zip
           fail_on_unmatched_files: true
+          body_path: NOTES.md
